@@ -1,8 +1,8 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 import { KinesisStreamEvent } from 'aws-lambda';
-import { putIfNotExists } from '../../../shared/idempotency/idempotency.service';
-import { Order } from '../../../shared/types/order';
+import { putIfNotExists } from './shared/idempotency.service';
+import { Order } from './shared/order';
 
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 

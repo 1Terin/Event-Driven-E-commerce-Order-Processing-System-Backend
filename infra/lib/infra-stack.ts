@@ -1,49 +1,48 @@
-import { Stack, StackProps, RemovalPolicy } from 'aws-cdk-lib';
+import { Stack, StackProps, RemovalPolicy, Duration } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as kinesis from 'aws-cdk-lib/aws-kinesis';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as apigw from 'aws-cdk-lib/aws-apigateway';
-import * as iam from 'aws-cdk-lib/aws-iam';
-
+import * as eventSources from 'aws-cdk-lib/aws-lambda-event-sources';
 
 export class OrderProcessingStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
 
-    // DynamoDB Orders Table
+    /* --------------------
+       Data Layer
+    -------------------- */
     const ordersTable = new dynamodb.Table(this, 'OrdersTable', {
       tableName: 'Orders',
-      partitionKey: {
-        name: 'orderId',
-        type: dynamodb.AttributeType.STRING,
-      },
+      partitionKey: { name: 'orderId', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      removalPolicy: RemovalPolicy.DESTROY, // dev-only
+      removalPolicy: RemovalPolicy.DESTROY, // dev only
     });
 
-    // Kinesis Stream for Order Events
     const orderEventsStream = new kinesis.Stream(this, 'OrderEventsStream', {
       streamName: 'OrderEvents',
       shardCount: 1,
       removalPolicy: RemovalPolicy.DESTROY,
     });
 
+    /* --------------------
+       API Ingestion
+    -------------------- */
     const orderIngestionFn = new lambda.Function(this, 'OrderIngestionFn', {
       runtime: lambda.Runtime.NODEJS_20_X,
       handler: 'handler.handler',
       code: lambda.Code.fromAsset('../services/api/order-ingestion', {
         bundling: {
           image: lambda.Runtime.NODEJS_20_X.bundlingImage,
-          environment: {
-            NPM_CONFIG_CACHE: '/tmp/.npm',
-          },
+          environment: { NPM_CONFIG_CACHE: '/tmp/.npm' },
           command: [
-            'bash', '-c',
+            'bash',
+            '-c',
             [
               'npm install',
-              'npx esbuild handler.ts --bundle --platform=node --target=node20 --outfile=/asset-output/handler.js'
-            ].join(' && ')
+              'npx esbuild handler.ts --bundle --platform=node --target=node20 --outfile=/asset-output/handler.js',
+            ].join(' && '),
           ],
         },
       }),
@@ -58,7 +57,44 @@ export class OrderProcessingStack extends Stack {
       restApiName: 'Orders Service',
     });
 
-    const orders = api.root.addResource('orders');
-    orders.addMethod('POST', new apigw.LambdaIntegration(orderIngestionFn));
+    api.root
+      .addResource('orders')
+      .addMethod('POST', new apigw.LambdaIntegration(orderIngestionFn));
+
+    /* --------------------
+       Phase 2: Consumer
+    -------------------- */
+    const orderConsumerFn = new lambda.Function(this, 'OrderConsumerFn', {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: 'index.handler',
+      timeout: Duration.seconds(30),
+      code: lambda.Code.fromAsset('../services/consumers/order-consumer', {
+        bundling: {
+          image: lambda.Runtime.NODEJS_20_X.bundlingImage,
+          environment: { NPM_CONFIG_CACHE: '/tmp/.npm' },
+          command: [
+            'bash',
+            '-c',
+            [
+              'npm install',
+              'npx esbuild index.ts --bundle --platform=node --target=node20 --outfile=/asset-output/index.js',
+            ].join(' && '),
+          ],
+        },
+      }),
+      environment: {
+        ORDERS_TABLE: ordersTable.tableName,
+      },
+    });
+
+    ordersTable.grantWriteData(orderConsumerFn);
+
+    orderConsumerFn.addEventSource(
+      new eventSources.KinesisEventSource(orderEventsStream, {
+        batchSize: 10,
+        startingPosition: lambda.StartingPosition.TRIM_HORIZON,
+        retryAttempts: 3,
+      })
+    );
   }
 }

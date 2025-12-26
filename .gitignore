@@ -1,5 +1,6 @@
 # dependencies
 node_modules/
+services/**/node_modules
 
 # env
 .env
