@@ -1,0 +1,12 @@
+# dependencies
+node_modules/
+
+# env
+.env
+
+# CDK output
+cdk.out/
+
+# OS / editor
+.DS_Store
+.vscode/
