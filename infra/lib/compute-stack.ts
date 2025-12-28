@@ -13,6 +13,7 @@ interface ComputeStackProps extends StackProps {
   ordersTable: dynamodb.Table;
   orderEventsStream: kinesis.Stream;
   eventBus: events.EventBus;
+  daxEndpoint: string; // (not used yet – future read APIs)
 }
 
 export class ComputeStack extends Stack {
@@ -41,12 +42,21 @@ export class ComputeStack extends Stack {
       code: lambda.Code.fromAsset('../services/consumers/order-consumer', {
         bundling: {
           image: lambda.Runtime.NODEJS_20_X.bundlingImage,
+          environment: {
+            NPM_CONFIG_CACHE: '/tmp/.npm',
+          },
           command: [
             'bash',
             '-c',
             [
               'npm install',
-              'npx esbuild index.ts --bundle --platform=node --target=node20 --outfile=/asset-output/index.js',
+              'npx esbuild index.ts ' +
+                '--bundle ' +
+                '--platform=node ' +
+                '--target=node20 ' +
+                '--external:@aws-sdk/* ' +
+                '--external:@smithy/* ' +
+                '--outfile=/asset-output/index.js',
             ].join(' && '),
           ],
         },
@@ -67,7 +77,7 @@ export class ComputeStack extends Stack {
     );
 
     /* =====================================
-       PHASE 3 — STREAM → EVENTBRIDGE + DLQ
+       PHASE 3 — DYNAMODB STREAM → EVENTBRIDGE
        ===================================== */
 
     const streamDlq = new sqs.Queue(this, 'DynamoStreamProcessorDLQ', {
@@ -102,12 +112,20 @@ export class ComputeStack extends Stack {
         {
           bundling: {
             image: lambda.Runtime.NODEJS_20_X.bundlingImage,
+            environment: {
+              NPM_CONFIG_CACHE: '/tmp/.npm',
+            },
             command: [
               'bash',
               '-c',
               [
-                'npm install',
-                'npx esbuild index.ts --bundle --platform=node --target=node20 --outfile=/asset-output/index.js',
+                'npx esbuild index.ts ' +
+                  '--bundle ' +
+                  '--platform=node ' +
+                  '--target=node20 ' +
+                  '--external:@aws-sdk/* ' +
+                  '--external:@smithy/* ' +
+                  '--outfile=/asset-output/index.js',
               ].join(' && '),
             ],
           },
@@ -152,22 +170,27 @@ export class ComputeStack extends Stack {
       handler: 'index.handler',
       timeout: Duration.seconds(30),
       role: replayRole,
-      code: lambda.Code.fromAsset(
-        '../services/stream-handlers/dlq-replay',
-        {
-          bundling: {
-            image: lambda.Runtime.NODEJS_20_X.bundlingImage,
-            command: [
-              'bash',
-              '-c',
-              [
-                'npm install',
-                'npx esbuild index.ts --bundle --platform=node --target=node20 --outfile=/asset-output/index.js',
-              ].join(' && '),
-            ],
+      code: lambda.Code.fromAsset('../services/stream-handlers/dlq-replay', {
+        bundling: {
+          image: lambda.Runtime.NODEJS_20_X.bundlingImage,
+          environment: {
+            NPM_CONFIG_CACHE: '/tmp/.npm',
           },
-        }
-      ),
+          command: [
+            'bash',
+            '-c',
+            [
+              'npx esbuild index.ts ' +
+                '--bundle ' +
+                '--platform=node ' +
+                '--target=node20 ' +
+                '--external:@aws-sdk/* ' +
+                '--external:@smithy/* ' +
+                '--outfile=/asset-output/index.js',
+            ].join(' && '),
+          ],
+        },
+      }),
       environment: {
         EVENT_BUS_NAME: props.eventBus.eventBusName,
       },
@@ -213,12 +236,20 @@ export class ComputeStack extends Stack {
       code: lambda.Code.fromAsset('../services/consumers/notifier', {
         bundling: {
           image: lambda.Runtime.NODEJS_20_X.bundlingImage,
+          environment: {
+            NPM_CONFIG_CACHE: '/tmp/.npm',
+          },
           command: [
             'bash',
             '-c',
             [
-              'npm install',
-              'npx esbuild index.ts --bundle --platform=node --target=node20 --outfile=/asset-output/index.js',
+              'npx esbuild index.ts ' +
+                '--bundle ' +
+                '--platform=node ' +
+                '--target=node20 ' +
+                '--external:@aws-sdk/* ' +
+                '--external:@smithy/* ' +
+                '--outfile=/asset-output/index.js',
             ].join(' && '),
           ],
         },
