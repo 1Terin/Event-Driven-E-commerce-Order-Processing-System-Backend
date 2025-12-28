@@ -6,10 +6,13 @@ import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as kinesis from 'aws-cdk-lib/aws-kinesis';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as sqs from 'aws-cdk-lib/aws-sqs';
+import * as events from 'aws-cdk-lib/aws-events';
+import * as targets from 'aws-cdk-lib/aws-events-targets';
 
 interface ComputeStackProps extends StackProps {
   ordersTable: dynamodb.Table;
   orderEventsStream: kinesis.Stream;
+  eventBus: events.EventBus;
 }
 
 export class ComputeStack extends Stack {
@@ -111,7 +114,7 @@ export class ComputeStack extends Stack {
         }
       ),
       environment: {
-        EVENT_BUS_NAME: 'order-events-bus',
+        EVENT_BUS_NAME: props.eventBus.eventBusName,
       },
     });
 
@@ -166,7 +169,7 @@ export class ComputeStack extends Stack {
         }
       ),
       environment: {
-        EVENT_BUS_NAME: 'order-events-bus',
+        EVENT_BUS_NAME: props.eventBus.eventBusName,
       },
     });
 
@@ -175,5 +178,67 @@ export class ComputeStack extends Stack {
         batchSize: 10,
       })
     );
+
+    /* =========================
+       PHASE 4 — EMAIL NOTIFIER
+       ========================= */
+
+    const notifierDlq = new sqs.Queue(this, 'OrderNotifierDLQ', {
+      queueName: 'order-notifier-dlq',
+      retentionPeriod: Duration.days(14),
+    });
+
+    const notifierRole = new iam.Role(this, 'OrderNotifierRole', {
+      assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
+      managedPolicies: [
+        iam.ManagedPolicy.fromAwsManagedPolicyName(
+          'service-role/AWSLambdaBasicExecutionRole'
+        ),
+      ],
+    });
+
+    notifierRole.addToPolicy(
+      new iam.PolicyStatement({
+        actions: ['ses:SendEmail', 'ses:SendRawEmail'],
+        resources: ['*'],
+      })
+    );
+
+    const notifierFn = new lambda.Function(this, 'OrderNotifierFn', {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: 'index.handler',
+      timeout: Duration.seconds(30),
+      role: notifierRole,
+      deadLetterQueue: notifierDlq,
+      code: lambda.Code.fromAsset('../services/consumers/notifier', {
+        bundling: {
+          image: lambda.Runtime.NODEJS_20_X.bundlingImage,
+          command: [
+            'bash',
+            '-c',
+            [
+              'npm install',
+              'npx esbuild index.ts --bundle --platform=node --target=node20 --outfile=/asset-output/index.js',
+            ].join(' && '),
+          ],
+        },
+      }),
+      environment: {
+        NOTIFY_EMAIL: process.env.NOTIFY_EMAIL!,
+      },
+    });
+
+    new events.Rule(this, 'OrderNotificationRule', {
+      eventBus: props.eventBus,
+      eventPattern: {
+        source: ['orders.dynamodb'],
+      },
+      targets: [
+        new targets.LambdaFunction(notifierFn, {
+          deadLetterQueue: notifierDlq,
+          retryAttempts: 3,
+        }),
+      ],
+    });
   }
 }
