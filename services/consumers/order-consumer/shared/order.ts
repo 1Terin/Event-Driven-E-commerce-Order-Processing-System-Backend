@@ -5,6 +5,7 @@ export type OrderStatus =
   | 'FAILED';
 
 export interface Order {
+  PK: string;
   orderId: string;
   status: OrderStatus;
   payload: unknown;

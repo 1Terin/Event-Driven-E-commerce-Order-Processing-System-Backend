@@ -15,6 +15,7 @@ export const handler = async (event: KinesisStreamEvent) => {
     const now = new Date().toISOString();
 
     const order: Order = {
+      PK: `ORDER#${payload.orderId}`,
       orderId: payload.orderId,
       status: 'RECEIVED',
       payload: payload.body,
