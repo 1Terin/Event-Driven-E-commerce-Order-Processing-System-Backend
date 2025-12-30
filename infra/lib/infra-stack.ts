@@ -4,6 +4,7 @@ import { Construct } from 'constructs';
 import { DataStack } from './data-stack';
 import { StreamStack } from './stream-stack';
 import { ComputeStack } from './compute-stack';
+import { ApiStack } from './api-stack';
 
 export class InfraStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
@@ -24,11 +25,14 @@ export class InfraStack extends Stack {
     const streamStack = new StreamStack(this, 'StreamStack');
 
     /* =========================
-       COMPUTE
-       - API Lambdas
-       - Consumers
-       - Stream processors
-       - Notifier
+       API (PHASE 1)
+       ========================= */
+    new ApiStack(this, 'ApiStack', {
+      orderEventsStream: streamStack.orderEventsStream,
+    });
+
+    /* =========================
+       COMPUTE (PHASE 2–4)
        ========================= */
     new ComputeStack(this, 'ComputeStack', {
       ordersTable: dataStack.ordersTable,
