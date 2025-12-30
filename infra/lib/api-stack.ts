@@ -11,6 +11,11 @@ interface ApiStackProps extends StackProps {
 export class ApiStack extends Stack {
   public readonly api: apigw.RestApi;
 
+  /* =========================
+     EXPOSED FOR OBSERVABILITY
+     ========================= */
+  public readonly orderIngestionFn: lambda.Function;
+
   constructor(scope: Construct, id: string, props: ApiStackProps) {
     super(scope, id, props);
 
@@ -18,7 +23,7 @@ export class ApiStack extends Stack {
        ORDER INGESTION LAMBDA
        ========================= */
 
-    const orderIngestionFn = new lambda.Function(this, 'OrderIngestionFn', {
+    this.orderIngestionFn = new lambda.Function(this, 'OrderIngestionFn', {
       runtime: lambda.Runtime.NODEJS_20_X,
       handler: 'handler.handler',
       timeout: Duration.seconds(10),
@@ -48,7 +53,7 @@ export class ApiStack extends Stack {
       },
     });
 
-    props.orderEventsStream.grantWrite(orderIngestionFn);
+    props.orderEventsStream.grantWrite(this.orderIngestionFn);
 
     /* =========================
        API GATEWAY
@@ -66,7 +71,7 @@ export class ApiStack extends Stack {
     const orders = this.api.root.addResource('orders');
     orders.addMethod(
       'POST',
-      new apigw.LambdaIntegration(orderIngestionFn)
+      new apigw.LambdaIntegration(this.orderIngestionFn)
     );
   }
 }

@@ -17,6 +17,11 @@ interface ComputeStackProps extends StackProps {
 }
 
 export class ComputeStack extends Stack {
+  /* =========================
+     EXPOSED FOR OBSERVABILITY
+     ========================= */
+  public readonly orderNotifierDlq: sqs.Queue;
+
   constructor(scope: Construct, id: string, props: ComputeStackProps) {
     super(scope, id, props);
 
@@ -206,7 +211,7 @@ export class ComputeStack extends Stack {
        PHASE 4 — EMAIL NOTIFIER
        ========================= */
 
-    const notifierDlq = new sqs.Queue(this, 'OrderNotifierDLQ', {
+    this.orderNotifierDlq = new sqs.Queue(this, 'OrderNotifierDLQ', {
       queueName: 'order-notifier-dlq',
       retentionPeriod: Duration.days(14),
     });
@@ -232,7 +237,7 @@ export class ComputeStack extends Stack {
       handler: 'index.handler',
       timeout: Duration.seconds(30),
       role: notifierRole,
-      deadLetterQueue: notifierDlq,
+      deadLetterQueue: this.orderNotifierDlq,
       code: lambda.Code.fromAsset('../services/consumers/notifier', {
         bundling: {
           image: lambda.Runtime.NODEJS_20_X.bundlingImage,
@@ -266,7 +271,7 @@ export class ComputeStack extends Stack {
       },
       targets: [
         new targets.LambdaFunction(notifierFn, {
-          deadLetterQueue: notifierDlq,
+          deadLetterQueue: this.orderNotifierDlq,
           retryAttempts: 3,
         }),
       ],

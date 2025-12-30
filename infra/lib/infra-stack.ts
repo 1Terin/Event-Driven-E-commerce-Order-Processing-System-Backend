@@ -5,6 +5,7 @@ import { DataStack } from './data-stack';
 import { StreamStack } from './stream-stack';
 import { ComputeStack } from './compute-stack';
 import { ApiStack } from './api-stack';
+import { ObservabilityStack } from './observability-stack';
 
 export class InfraStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
@@ -27,18 +28,26 @@ export class InfraStack extends Stack {
     /* =========================
        API (PHASE 1)
        ========================= */
-    new ApiStack(this, 'ApiStack', {
+    const apiStack = new ApiStack(this, 'ApiStack', {
       orderEventsStream: streamStack.orderEventsStream,
     });
 
     /* =========================
        COMPUTE (PHASE 2–4)
        ========================= */
-    new ComputeStack(this, 'ComputeStack', {
+    const computeStack = new ComputeStack(this, 'ComputeStack', {
       ordersTable: dataStack.ordersTable,
       orderEventsStream: streamStack.orderEventsStream,
       eventBus: streamStack.orderEventBus,
       daxEndpoint: dataStack.daxCluster.attrClusterDiscoveryEndpointUrl,
+    });
+
+    /* =========================
+       OBSERVABILITY (PHASE 5)
+       ========================= */
+    new ObservabilityStack(this, 'ObservabilityStack', {
+      orderIngestionFn: apiStack.orderIngestionFn,
+      orderNotifierDlq: computeStack.orderNotifierDlq,
     });
   }
 }
