@@ -99,7 +99,7 @@ This single request triggers the entire asynchronous pipeline.
 
 ---
 
-## Observe Downstream Behavior
+### Observe Downstream Behavior
 
 After ingestion, the following can be observed:
 
