@@ -3,6 +3,8 @@ import { Construct } from 'constructs';
 import * as sfn from 'aws-cdk-lib/aws-stepfunctions';
 
 export class WorkflowStack extends Stack {
+  public readonly orderStateMachine: sfn.StateMachine;
+
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
 
@@ -28,8 +30,12 @@ export class WorkflowStack extends Stack {
 
     const definition = received.next(completed);
 
-    new sfn.StateMachine(this, 'OrderStateMachine', {
-      definition,
-    });
+    this.orderStateMachine = new sfn.StateMachine(
+      this,
+      'OrderStateMachine',
+      {
+        definition,
+      }
+    );
   }
 }

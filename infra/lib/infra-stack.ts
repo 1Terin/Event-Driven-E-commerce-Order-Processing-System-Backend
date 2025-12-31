@@ -6,6 +6,7 @@ import { StreamStack } from './stream-stack';
 import { ComputeStack } from './compute-stack';
 import { ApiStack } from './api-stack';
 import { ObservabilityStack } from './observability-stack';
+import { WorkflowStack } from './workflow-stack';
 
 export class InfraStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
@@ -25,9 +26,11 @@ export class InfraStack extends Stack {
        ========================= */
     const streamStack = new StreamStack(this, 'StreamStack');
 
-    /* =========================
-       API (PHASE 1)
-       ========================= */
+    const workflowStack = new WorkflowStack(
+      this,
+      'WorkflowStack'
+    );
+
     const apiStack = new ApiStack(this, 'ApiStack', {
       orderEventsStream: streamStack.orderEventsStream,
     });
@@ -39,7 +42,9 @@ export class InfraStack extends Stack {
       ordersTable: dataStack.ordersTable,
       orderEventsStream: streamStack.orderEventsStream,
       eventBus: streamStack.orderEventBus,
-      daxEndpoint: dataStack.daxCluster.attrClusterDiscoveryEndpointUrl,
+      daxEndpoint:
+        dataStack.daxCluster.attrClusterDiscoveryEndpointUrl,
+      orderStateMachine: workflowStack.orderStateMachine,
     });
 
     /* =========================

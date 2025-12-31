@@ -25,6 +25,7 @@
     "@aws-sdk/client-eventbridge": "^3.958.0",
     "@aws-sdk/client-kinesis": "^3.958.0",
     "@aws-sdk/client-ses": "^3.958.0",
+    "@aws-sdk/client-sfn": "^3.958.0",
     "@aws-sdk/lib-dynamodb": "^3.958.0"
   }
 }

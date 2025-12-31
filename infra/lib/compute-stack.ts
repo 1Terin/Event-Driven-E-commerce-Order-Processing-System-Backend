@@ -8,18 +8,17 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 import * as sqs from 'aws-cdk-lib/aws-sqs';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
+import * as sfn from 'aws-cdk-lib/aws-stepfunctions';
 
 interface ComputeStackProps extends StackProps {
   ordersTable: dynamodb.Table;
   orderEventsStream: kinesis.Stream;
   eventBus: events.EventBus;
-  daxEndpoint: string; // (not used yet – future read APIs)
+  daxEndpoint: string; 
+  orderStateMachine: sfn.StateMachine;
 }
 
 export class ComputeStack extends Stack {
-  /* =========================
-     EXPOSED FOR OBSERVABILITY
-     ========================= */
   public readonly orderNotifierDlq: sqs.Queue;
 
   constructor(scope: Construct, id: string, props: ComputeStackProps) {
@@ -38,6 +37,13 @@ export class ComputeStack extends Stack {
         ),
       ],
     });
+
+    orderConsumerRole.addToPolicy(
+      new iam.PolicyStatement({
+        actions: ['states:StartExecution'],
+        resources: [props.orderStateMachine.stateMachineArn],
+      })
+    );
 
     const orderConsumerFn = new lambda.Function(this, 'OrderConsumerFn', {
       runtime: lambda.Runtime.NODEJS_20_X,
@@ -68,10 +74,13 @@ export class ComputeStack extends Stack {
       }),
       environment: {
         ORDERS_TABLE: props.ordersTable.tableName,
+        ORDER_STATE_MACHINE_ARN:
+          props.orderStateMachine.stateMachineArn,
       },
     });
 
     props.ordersTable.grantWriteData(orderConsumerFn);
+    props.orderStateMachine.grantStartExecution(orderConsumerFn);
 
     orderConsumerFn.addEventSource(
       new eventSources.KinesisEventSource(props.orderEventsStream, {
