@@ -4,36 +4,13 @@
 
 A production-style, event-driven order processing system that demonstrates how high-scale platforms ingest, process, and react to events asynchronously using AWS serverless and streaming services.
 
-The system is intentionally designed with **one interactive entry point (API ingestion)**.  
-All downstream behavior is **reactive, decoupled, and observable**, mirroring real-world production architectures used at scale.
+The system is intentionally designed with **one interactive entry point (API ingestion)**. All downstream behavior is **reactive, decoupled, and observable**, mirroring real-world production architectures used at scale.
 
 ---
 
 ## Architecture Flow
 
-Client
-  ↓
-API Gateway
-  ↓
-Order Ingestion Lambda
-  ↓
-Kinesis (OrderEvents Stream)
-  ↓
-Order Consumer Lambda
-  ├─ Idempotency check
-  ├─ Persist order → DynamoDB
-  └─ Start Step Functions execution (manual for demo)
-          ↓
-     Order State Machine
-     (RECEIVED → COMPLETED / FAILED)
-          ↓
-     DynamoDB Updates
-          ↓
-DynamoDB Streams
-  ↓
-EventBridge
-  ↓
-Notifications / Metrics / Future Consumers
+![alt text](image.png)
 
 ---
 
