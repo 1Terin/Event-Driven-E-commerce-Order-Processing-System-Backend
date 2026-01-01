@@ -46,6 +46,9 @@ The system is intentionally designed with **one interactive entry point (API ing
 - DynamoDB Streams  
 - Amazon EventBridge
 
+**Notification** 
+- Amazon SES
+
 **Caching**  
 - DynamoDB DAX (provisioned)
 
