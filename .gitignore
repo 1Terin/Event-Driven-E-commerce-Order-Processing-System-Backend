@@ -7,6 +7,7 @@ services/**/node_modules
 
 # CDK output
 cdk.out/
+cdk.context.json
 
 # OS / editor
 .DS_Store
