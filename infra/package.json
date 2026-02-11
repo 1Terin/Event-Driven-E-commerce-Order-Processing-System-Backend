@@ -20,7 +20,7 @@
     "typescript": "~5.9.3"
   },
   "dependencies": {
-    "@aws-sdk/client-kinesis": "^3.958.0",
+    "@aws-sdk/client-kinesis": "^3.987.0",
     "aws-cdk-lib": "2.232.1",
     "constructs": "^10.0.0"
   }
