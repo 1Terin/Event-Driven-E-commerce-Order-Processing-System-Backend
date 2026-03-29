@@ -21,12 +21,12 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
-    "@aws-sdk/client-dynamodb": "^3.958.0",
-    "@aws-sdk/client-eventbridge": "^3.958.0",
-    "@aws-sdk/client-kinesis": "^3.958.0",
-    "@aws-sdk/client-ses": "^3.958.0",
-    "@aws-sdk/client-sfn": "^3.958.0",
-    "@aws-sdk/lib-dynamodb": "^3.958.0",
+    "@aws-sdk/client-dynamodb": "^3.987.0",
+    "@aws-sdk/client-eventbridge": "^3.987.0",
+    "@aws-sdk/client-kinesis": "^3.987.0",
+    "@aws-sdk/client-ses": "^3.987.0",
+    "@aws-sdk/client-sfn": "^3.987.0",
+    "@aws-sdk/lib-dynamodb": "^3.987.0",
     "dotenv": "^17.2.3"
   }
 }
